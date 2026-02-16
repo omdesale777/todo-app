@@ -1,5 +1,4 @@
 package main
-
 import (
 	"encoding/json"
 	"fmt"
@@ -32,7 +31,6 @@ func enableCORS(w http.ResponseWriter) {
 
 func getTodos(w http.ResponseWriter, r *http.Request) {
 	enableCORS(w)
-
 	if r.Method == "OPTIONS" {
 		return
 	}
@@ -49,17 +47,13 @@ func getTodos(w http.ResponseWriter, r *http.Request) {
 
 func createTodo(w http.ResponseWriter, r *http.Request) {
 	enableCORS(w)
-
 	if r.Method == "OPTIONS" {
 		return
 	}
-
 	var req struct {
 		Title string `json:"title"`
 	}
-
 	json.NewDecoder(r.Body).Decode(&req)
-
 	if req.Title == "" {
 		w.WriteHeader(http.StatusBadRequest)
 		return
@@ -76,47 +70,38 @@ func createTodo(w http.ResponseWriter, r *http.Request) {
 	}
 	todos[id] = newTodo
 	mu.Unlock()
-
 	w.WriteHeader(http.StatusCreated)
 	json.NewEncoder(w).Encode(newTodo)
 }
 
 func updateTodo(w http.ResponseWriter, r *http.Request) {
 	enableCORS(w)
-
 	if r.Method == "OPTIONS" {
 		return
 	}
 	id, _ := strconv.Atoi(strings.TrimPrefix(r.URL.Path, "/api/todos/"))
-
 	var req struct {
 		Done bool `json:"done"`
 	}
-
 	json.NewDecoder(r.Body).Decode(&req)
-
 	mu.Lock()
 	if todo, exists := todos[id]; exists {
 		todo.Done = req.Done
 		todos[id] = todo
 	}
 	mu.Unlock()
-
 	json.NewEncoder(w).Encode(todos[id])
 }
 
 func deleteTodo(w http.ResponseWriter, r *http.Request) {
 	enableCORS(w)
-
 	if r.Method == "OPTIONS" {
 		return
 	}
 	id, _ := strconv.Atoi(strings.TrimPrefix(r.URL.Path, "/api/todos/"))
-
 	mu.Lock()
 	delete(todos, id)
 	mu.Unlock()
-
 	w.WriteHeader(http.StatusOK)
 }
 
@@ -130,7 +115,6 @@ func main() {
 			enableCORS(w)
 		}
 	})
-
 	http.HandleFunc("/api/todos/", func(w http.ResponseWriter, r *http.Request) {
 		if r.Method == "PUT" {
 			updateTodo(w, r)
@@ -140,9 +124,7 @@ func main() {
 			enableCORS(w)
 		}
 	})
-
 	fmt.Println("Server running on http://localhost:8080")
 	fmt.Println("Frontend: http://localhost:8000")
-
 	http.ListenAndServe(":8080", nil)
 }
