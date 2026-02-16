@@ -1,0 +1,259 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Todo App</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        body {
+            font-family: Arial, sans-serif;
+            background: #f5f5f5;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            padding: 10px;
+        }
+        .container {
+            background: white;
+            padding: 30px;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+            width: 100%;
+            max-width: 500px;
+        }
+        h1 {
+            text-align: center;
+            margin-bottom: 30px;
+            color: #333;
+        }
+        .input-section {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 20px;
+        }
+        input {
+            flex: 1;
+            padding: 12px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            font-size: 14px;
+        }
+        button {
+            padding: 12px 20px;
+            background: #007bff;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 14px;
+        }
+        button:hover {
+            background: #0056b3;
+        }
+
+        .todo-list {
+            list-style: none;
+        }
+        .todo-item {
+            display: flex;
+            align-items: flex-start;
+            padding: 15px;
+            border: 1px solid #eee;
+            border-radius: 4px;
+            margin-bottom: 10px;
+            background: #fafafa;
+            gap: 10px;
+        }
+        .todo-item.done {
+            opacity: 0.6;
+        }
+        .todo-item.done .todo-text {
+            text-decoration: line-through;
+            color: #999;
+        }
+
+        .todo-checkbox {
+            width: 20px;
+            height: 20px;
+            margin-top: 2px;
+            cursor: pointer;
+            flex-shrink: 0;
+        }
+        .todo-content {
+            flex: 1;
+        }
+        .todo-text {
+            color: #333;
+            word-break: break-word;
+            margin-bottom: 5px;
+        }
+        .todo-time {
+            font-size: 12px;
+            color: #999;
+        }
+        .delete-btn {
+            background: #dc3545;
+            padding: 8px 12px;
+            font-size: 12px;
+            cursor: pointer;
+            flex-shrink: 0;
+        }
+        .delete-btn:hover {
+            background: #c82333;
+        }
+        .empty-message {
+            text-align: center;
+            color: #999;
+            padding: 30px;
+        }
+
+        @media (max-width: 600px) {
+            .container {
+                padding: 20px;
+            }
+
+            h1 {
+                font-size: 24px;
+            }
+
+            .input-section {
+                flex-direction: column;
+            }
+
+            button {
+                width: 100%;
+            }
+
+            .todo-item {
+                flex-direction: column;
+            }
+
+            .delete-btn {
+                width: 100%;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>📝 Todo App</h1>
+        
+        <div class="input-section">
+            <input type="text" id="todoInput" placeholder="Add a new todo...">
+            <button onclick="addTodo()">Add</button>
+        </div>
+
+        <ul class="todo-list" id="todoList">
+            <li class="empty-message">No todos added yet. Add a task above!</li>
+        </ul>
+    </div>
+
+    <script>
+        const API = 'http://localhost:8080/api/todos';
+
+        function loadTodos() {
+            fetch(API)  
+                .then(res => res.json())  
+                .then(data => {  
+                    const list = document.getElementById('todoList');
+                    list.innerHTML = '';  
+                    
+                    if (!data || data.length === 0) {
+                        list.innerHTML = '<li class="empty-message">No todos added yet. Add a task above!</li>';
+                        return;
+                    }
+
+                    data.forEach(todo => {
+                        addTodoToUI(todo);
+                    });
+                })
+                .catch(err => {
+                    console.error('Error loading todos:', err);
+                    alert('Cannot connect to backend. Is it running on port 8080?');
+                });
+        }
+
+        function addTodo() {
+            const input = document.getElementById('todoInput');
+            const title = input.value.trim();
+
+            if (!title) {
+                alert('Please enter a todo');
+                return;
+            }
+
+            fetch(API, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ title: title })
+            })
+                .then(res => res.json()) 
+                .then(todo => {
+                    input.value = '';
+                    loadTodos();
+                })
+                .catch(err => {
+                    console.error('Error adding todo:', err);
+                    alert('Error adding todo');
+                });
+        }
+
+        function toggleTodo(id, currentDone) {
+            fetch(API + '/' + id, {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ done: !currentDone })
+            })
+                .then(res => res.json())
+                .then(todo => {
+                    loadTodos();
+                })
+                .catch(err => console.error('Error updating todo:', err));
+        }
+
+        function deleteTodo(id) {
+            fetch(API + '/' + id, {
+                method: 'DELETE'
+            })
+                .then(() => {
+                    loadTodos();
+                })
+                .catch(err => console.error('Error deleting todo:', err));
+        }
+
+        function addTodoToUI(todo) {
+            const list = document.getElementById('todoList');
+            const li = document.createElement('li');
+            li.className = 'todo-item ' + (todo.done ? 'done' : '');
+            
+            const dateObj = new Date(todo.createdAt); 
+            const dateStr = dateObj.toLocaleDateString();
+            const timeStr = dateObj.toLocaleTimeString();
+            
+            li.innerHTML = `
+                <input type="checkbox" class="todo-checkbox" ${todo.done ? 'checked' : ''} 
+                       onchange="toggleTodo(${todo.id}, ${todo.done})">
+                <div class="todo-content">
+                    <div class="todo-text">${escapeHtml(todo.title)}</div>
+                    <div class="todo-time">Created: ${dateStr} at ${timeStr}</div>
+                </div>
+                <button class="delete-btn" onclick="deleteTodo(${todo.id})">Delete</button>
+            `;
+            
+            list.appendChild(li);
+        }
+        function escapeHtml(text) {
+            const div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML;
+        }
+        loadTodos();
+    </script>
+</body>
+</html>
